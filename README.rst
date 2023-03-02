@@ -24,7 +24,7 @@
 Abstract
 ========
 
-Purus sit amet luctus venenatis lectus magna fringilla. Condimentum id venenatis a condimentum vitae sapien. Auctor neque vitae tempus quam pellentesque nec nam aliquam. Eget egestas purus viverra accumsan in. Nam aliquam sem et tortor. Donec et odio pellentesque diam volutpat commodo. Odio pellentesque diam volutpat commodo sed egestas. Sit amet dictum sit amet justo. Pellentesque sit amet porttitor eget. Imperdiet sed euismod nisi porta lorem mollis aliquam ut. Quis varius quam quisque id diam vel quam elementum. Ornare lectus sit amet est placerat in. Vulputate dignissim suspendisse in est ante. Elit sed vulputate mi sit amet mauris. Egestas sed tempus urna et pharetra pharetra. Viverra tellus in hac habitasse platea dictumst vestibulum rhoncus.
+В работе решается задача улучшения качества моделирования динамики сложных механических систем с помощью нейронных сетей. Большинство подходов, оперирующих лишь набором обобщённых координат в качестве входа, не способны предсказывать поведение системы с высокой точностью. В работе исследуется Нётеровская Лагранжева нейронная сеть, которая учитывает закон сохранения энергии, импульса, момента импульса и способна восстанавливать лагранжиан системы по траекториям её движения. Вместо полносвязанных слоев в сети используются модификации внутренней архитектуры, основанные на свёрточных и рекуррентных нейронных сетях. Сравнение результатов моделирования проводилось на искусственно сгенерированных данных для пружинной системы. Результаты подтверждают то, что качество модели увеличивается, если она обладает информацией о системе.
 
 Research publications
 ===============================
