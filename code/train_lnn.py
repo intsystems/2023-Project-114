@@ -1,6 +1,7 @@
 import pickle
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 import jax
 from jax.experimental import stax
 from jax.experimental import optimizers
@@ -11,9 +12,9 @@ from dataset.plot import normalize_dp
 from visualization import plot_loss
 
 
-TRAIN_DATASET_PATH = "../data/train_data.pickle"
-TEST_DATASET_PATH = "../data/test_data.pickle"
-LOG_DIR = "./logs"
+TRAIN_DATASET_PATH = Path("dataset", "data", "train_data.pickle")
+TEST_DATASET_PATH = Path("dataset","data", "test_data.pickle")
+LOG_DIR = Path("logs")
 
 # build a neural network model
 init_random_params, nn_forward_fn = stax.serial(
@@ -63,7 +64,7 @@ def train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=None):
     # numbers in comments denote stephan's settings
     batch_size = 100
     test_every = 10
-    num_batches = 1500
+    num_batches = 10
 
     train_losses = []
     test_losses = []

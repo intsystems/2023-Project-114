@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from torch import nn
+from pathlib import Path
 from torch.utils.data import DataLoader
 from datetime import datetime
 
@@ -11,8 +12,9 @@ from models.fc_nn import BaselineNN
 from dataset.base_dataset import SimulateDataset
 from visualization import plot_loss
 
-TRAIN_DATASET_PATH = "../data/train_data.pickle"
-TEST_DATASET_PATH = "../data/test_data.pickle"
+TRAIN_DATASET_PATH = Path("dataset", "data", "train_data.pickle")
+TEST_DATASET_PATH = Path("dataset","data", "test_data.pickle")
+LOG_DIR = Path("logs")
 
 def predict_fc(model, x1, gen_len):
     model.eval()
@@ -71,7 +73,7 @@ def main():
     [x_test, xt_test, y_test] = test_data
     trainset = SimulateDataset(x_train, y_train)
     testset = SimulateDataset(x_test, y_test)
-    train(trainset, testset, num_epochs=5, lr=0.01, batch_size=32, log_dir='./logs')
+    train(trainset, testset, num_epochs=5, lr=0.01, batch_size=32, log_dir=LOG_DIR)
 
 
 if __name__ == '__main__':
