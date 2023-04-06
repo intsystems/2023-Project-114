@@ -2,8 +2,8 @@ import pickle
 from datetime import datetime
 from functools import partial
 import jax
-from jax.experimental import stax
-from jax.experimental import optimizers
+from jax.example_libraries import stax
+from jax.example_libraries import optimizers
 import jax.numpy as jnp
 
 from dataset.make_data import equation_of_motion, rk4_step, solve_lagrangian

@@ -5,14 +5,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.experimental.ode import odeint
-from functools import partial # reduces arguments to function by making some subset implicit
-
+from functools import partial
 from jax.lib import xla_bridge
-
-from .plot import visualize_data
-
-#print(xla_bridge.get_backend().platform)
-
 
 def lagrangian(q, q_dot, m1, m2, l1, l2, g):
     """
@@ -128,9 +122,8 @@ def main():
         
     with open(f'{path_to_save}/test_data.pickle', 'wb') as handle:
         pickle.dump(test_arr, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+        
     visualize_data(x_train, x_test)
-
 
 if __name__ == '__main__':
     main()

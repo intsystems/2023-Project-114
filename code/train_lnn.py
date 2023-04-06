@@ -3,17 +3,18 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 import jax
-from jax.experimental import stax
-from jax.experimental import optimizers
+from jax.example_libraries import stax
+from jax.example_libraries import optimizers
 import jax.numpy as jnp
-
+import sys
 from dataset.make_data import equation_of_motion, rk4_step, solve_lagrangian
 from dataset.plot import normalize_dp
 from visualization import plot_loss
+import numpy as np
 
 
-TRAIN_DATASET_PATH = Path("dataset", "data", "train_data.pickle")
-TEST_DATASET_PATH = Path("dataset","data", "test_data.pickle")
+TRAIN_DATASET_PATH = Path("trajectories")
+TEST_DATASET_PATH = Path("trajectories")
 LOG_DIR = Path("logs")
 
 # build a neural network model
@@ -28,7 +29,7 @@ init_random_params, nn_forward_fn = stax.serial(
 # replace the lagrangian with a parameteric model
 def learned_lagrangian(params):
     def lagrangian(q, q_t):
-        assert q.shape == (2,)
+        assert q.shape == (3,)
         state = normalize_dp(jnp.concatenate([q, q_t]))
         return jnp.squeeze(nn_forward_fn(params, state), axis=-1)
     return lagrangian
@@ -44,36 +45,26 @@ def loss(params, batch, time_step=None):
         preds = jax.vmap(partial(equation_of_motion, learned_lagrangian(params)))(state)
     return jnp.mean((preds - targets) ** 2)
 
-######## Define optimization and data
-
-# @jax.jit
-# def update_timestep(i, opt_state, batch, opt_update):
-#     params = get_params(opt_state)
-#     return opt_update(i, jax.grad(loss)(params, batch, time_step), opt_state)
-
 def predict_lnn(params, x, t):
     return jax.device_get(solve_lagrangian(learned_lagrangian(params), x, t=t))
 
-
-def train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=None):
-    run_name = datetime.now().strftime("%d_%m_%Y.%H_%M")
+def train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=None, name=""):
 
     rng = jax.random.PRNGKey(0)
-    _, init_params = init_random_params(rng, (-1, 4))
+    _, init_params = init_random_params(rng, (-1, 6))
 
-    # numbers in comments denote stephan's settings
     batch_size = 100
     test_every = 10
-    num_batches = 10
+    num_batches = 100
 
     train_losses = []
     test_losses = []
 
     # adam w learn rate decay
     opt_init, opt_update, get_params = optimizers.adam(
-        lambda t: jnp.select([t < batch_size*(num_batches//3),
-                            t < batch_size*(2*num_batches//3),
-                            t > batch_size*(2*num_batches//3)],
+        lambda t: jnp.select([t < batch_size * (num_batches // 3),
+                            t < batch_size * (2 * num_batches // 3),
+                            t > batch_size * (2 * num_batches // 3)],
                             [1e-3, 3e-4, 1e-4]))
     opt_state = opt_init(init_params)
 
@@ -83,7 +74,7 @@ def train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=None):
         return opt_update(i, jax.grad(loss)(params, batch, None), opt_state)
 
 
-    for iteration in range(batch_size*num_batches + 1):
+    for iteration in range(batch_size * num_batches + 1):
         if iteration % batch_size == 0:
             params = get_params(opt_state)
             train_loss = loss(params, (x_train, xt_train))
@@ -96,29 +87,46 @@ def train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=None):
 
     params = get_params(opt_state)
 
+    params_arr = [np.hstack([np.array(param_subgroup).reshape(-1) for param_subgroup in param_group]) \
+                  if len(param_group) > 0 else np.array([]) for param_group in params]
+
+    params_numpy = np.hstack(params_arr)
+    
     if log_dir is not None:
-        with open(f'{log_dir}/lnn_model_{run_name}.pickle', 'wb') as handle:
+        with open(Path("logs", f"{name}"), 'wb') as handle:
             pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         plot_loss(train_losses, test_losses, model_name='lnn', log_dir=log_dir)
 
 def main():
-    with open(TRAIN_DATASET_PATH, 'rb') as f:
-        train_data = pickle.load(f)
-    with open(TEST_DATASET_PATH, 'rb') as f:
-        test_data = pickle.load(f)
+
+    experiment_name = str(sys.argv[1])
+
+    n = int(sys.argv[2])
     
-    [x_train, xt_train, y_train] = train_data
-    [x_test, xt_test, y_test] = test_data
+    start_idx = int(sys.argv[3])
+    
+    for i in range(start_idx, start_idx + n):
+        name = experiment_name + f'_{i + 1}.pickle'
+        
+        path = Path(TRAIN_DATASET_PATH, name)
 
-    x_train = jax.device_put(jax.vmap(normalize_dp)(x_train))
-    y_train = jax.device_put(y_train)
+        with open(path, 'rb') as f:
+            train_data = pickle.load(f)
+            
+        with open(path, 'rb') as f:
+            test_data = pickle.load(f)
+    
+        [x_train, xt_train] = train_data
+        [x_test, xt_test] = test_data
 
-    x_test = jax.device_put(jax.vmap(normalize_dp)(x_test))
-    y_test = jax.device_put(y_test)
-
-    train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=LOG_DIR)
-
+        x_train = jax.device_put(jax.vmap(normalize_dp)(x_train))
+        x_test = jax.device_put(jax.vmap(normalize_dp)(x_test))
+        
+        print(f"======== {name} ========")
+        train(init_random_params, x_train, xt_train, x_test, xt_test, log_dir=LOG_DIR, name = name)
+        
+    print("======== done! =========")
 
 if __name__ == '__main__':
     main()
