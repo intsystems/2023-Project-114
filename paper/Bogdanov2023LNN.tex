@@ -1,5 +1,6 @@
 \documentclass[12pt, twoside]{article}
 \usepackage{jmlda}
+\usepackage{graphicx}
 \newcommand{\hdir}{.}
 
 \begin{document}
@@ -16,18 +17,15 @@
 \bigskip
 
 \noindent
-\textbf{Ключевые слова}: \emph {физическая система, лагранжиан, лагранжева нейронная сеть}
+\textbf{Ключевые слова}: \emph {физическая система, лагранжиан, Лагранжева нейронная сеть}
 
-%\doi{-}
-\receivedRus{-}
-\receivedEng{-}
 }
 
 \maketitle
 
 \section{Введение}
  
-    Для моделирования динамики физических систем обычно используется Лагранжева динамика \cite{landau1976mechanics}. В соответствии с ней строится лагранжиан $L$, который определяется как разница между кинетической энергией ($T$) и потенциальной энергией ($V$) системы:
+    Для моделирования динамики физических систем обычно используется Лагранжева динамика \cite{landau1976mechanics}. В соответствии с ней выбирается набор обобщенных координат, который полностью описывает физическую систему, затем строится лагранжиан $L$, который определяется как разница между кинетической энергией ($T$) и потенциальной энергией ($V$) системы:
 
     $$L = T - V.$$
     Для получения уравнений движения нужно воспользоваться уравнением Эйлера-Лагранжа:
@@ -35,159 +33,217 @@
     $$\frac{d}{dt} \frac{\partial L}{\partial \dot{\mathbf{q}}} - \frac{\partial L}{\partial \mathbf{q}} = 0,$$
     полученным из принципа \emph{наименьшего действия}.
 
-    Нейронные сети упрощают моделирование динамики физических систем и классификацию ее траекторий, так как для для их использования не требуются знания лагранжиана и решение сложных систем дифференциальных уравнений. 
-
-    [2 предложения о лагранжевой сети]
+    Нейронные сети упрощают моделирование динамики физических систем и классификацию ее траекторий. Для их использования не требуются знание лагранжиана и решение сложных систем дифференциальных уравнений. 
     
-    Лагранжева нейронная сеть (LNN) \cite{cranmer2020lagrangian} аппроксимируют обобщенный лагранжиан системы, с помощью которого, используя различные классификаторы, можно определить метку траектории исходя из предположения, что у различных меток сильно различаются коэффициенты лагранжиана.
+    Лагранжева нейронная сеть (LNN) \cite{cranmer2020lagrangian} обладает априорными знаниями о моделируемой системе. Модель аппроксимирует обобщенный лагранжиан системы, который позволяет перейти к простому математическому представлению физической системы. С помощью уравнения Эйлера-Лагранжа из этого лагарнжиана можно получить динамику этой физической системы.
 
-    [гипотеза]
-
-    [использование параметров лагранжевой сети в качестве признаков для решения задачи классификации]
-
-
-    [мб этот абзац в другой раздел?]
+    Для параметров Лагранжевых нейронных сетей утверждается гипотеза компактности: векторы параметров, соответствующие траекториям различных классов, оказываются разделимы в своём пространстве. Эти параметры являются признаками в задаче классификации этих траекторий.
     
-    Для вычислительного эксперимента используется датасет PAMAP2 \cite{PAMAP2}, который содержит траектории движений человека во время различных активностей и их метки.
-
-\newpage
+    Для проверки поставленной гипотезы проводится вычислительный эксперимент на датасете PAMAP2 \cite{PAMAP2}, который содержит траектории движений человека во время различных активностей и метки этих активностей.
     
 \section{Постановка задачи классификации траекторий физических систем}
 
 Задана выборка с метками из $n$ траекторий: 
 
     $$\{ \mathcal{D}_j, z_j\}_{j=1}^n,$$ 
-    где  [список]
+    где:
+    \begin{itemize}
 
-    %\{\mathbf{x}_i^{(j)}, \mathbf{y}_i^{(j)}\}_{i=1}^m\}_j
+        \item[$\bullet$] $\mathcal{D}_j = \{ \mathbf{x}_i^{(j)}, \mathbf{y}_i^{(j)} \}_{i=1}^{m_j}$ ~-- $j$-ая траектория,
 
-    %[\item[] x_i = ... - это то-то]
+        \item[$\bullet$] $\mathbf{x}_i^{(j)} = (\mathbf{q}_i^{(j)}, \mathbf{\dot{q}}_i^{(j)})$ ~-- координаты $j$-ой траектории движения физической системы, 
 
-    %[\item[] y_i]
+        \item[$\bullet$] $\mathbf{y}_i^{(j)} = \mathbf{\dot{x}}_i^{(j)} = (\mathbf{\dot{q}}_i^{(j)}, \mathbf{\ddot{q}}_i^{(j)})$ ~-- динамика движения физической системы на $j$-ой траектории, 
+
+        \item[$\bullet$] $\mathbf{q}_i^{(j)} \in \mathbb{R}^r$ ~-- вектор обобщенных координат,
+
+        \item[$\bullet$] $r$ ~-- количество координат,
+
+        \item[$\bullet$] $m_j$ ~-- длина $j$-ой траектории,
+
+        \item[$\bullet$] $z_j$ ~-- метка $j$-ой траектории.
+        
+    \end{itemize}
+        
+    \paragraph{Задачи регрессии восстановления лагранжиана}
+
+        Сведём задачу моделирования лагранжиана системы к задаче регрессии. Регрессионная модель для траектории $D_j$ выбирается из класса нейронных сетей:
+
+        $$\mathbf{f_j} \colon (\mathbf{X}_j, \mathbf{w}) \to \mathbf{y}_j,$$ 
+        где: 
     
-    $$\mathbf{x}_i = (\mathbf{q}_i, \mathbf{\dot{q}}_i)$$
-    ~-- координаты траектории движения физической системы, 
+        \begin{itemize}
     
-    $$\mathbf{{y}}_i = \mathbf{\dot{x}}_i = (\mathbf{\dot{q}}_i, \mathbf{\ddot{q}}_i)$$
-    ~-- динамика движения физической системы, $\mathbf{q}_i \in \mathbb{R}^{r \times n}$, где $r$ -- количество координат, $m$~-- длина траектории, $z_j$ ~-- метка класса.
+            \item[$\bullet$] $\mathbf{w} \in \mathbb{W}$ ~-- параметры модели, 
 
-\paragraph{Задачи регрессии восстановления лагранжиана}
+            \item[$\bullet$] $\hat{\mathbf{y}}_j = \mathbf{f}_j (\mathbf{X}_j, \mathbf{w}) \in \mathbb{R}^{2 \times r \times m_j}$ ~-- предсказанная динамика движения физической системы на $j$-ой траектории.
+        
+            \item[$\bullet$] $\mathbf{X}_j = \bigcup_{i=1}^{m_j} \mathbf{x}_i^{(j)}$ ~-- все координаты $j$-ой траектории движения физической системы.
+        
+        \end{itemize}
 
-    Сведём задачу моделирования лагранжиана системы к задаче регрессии. 
+        Задача моделирования динамики системы представлена в виде задачи минимизации квадратичной ошибки: 
 
-    Регрессионная модель [для траектории D\_j ?] выбирается из класса нейронных сетей:
+        $$\mathcal{L}(\textbf{w}) = \mathcal{L}(\mathbf{w} | \mathbf{X}_j, \mathbf{y}_j) = \| \hat{\mathbf{y}} - \mathbf{y} \|_2^2,$$
+    
+        $$\textbf{w}_j^* = \argmin_{\mathbf{w} \in \mathbb{W}} \left( \mathcal{L}(\textbf{w}) \right).$$
 
-    $$\mathbf{f_j} \colon (\mathbf{w}, \mathbf{X}) \to \mathbf{y},$$ 
-    где $\mathbf{w} \in \mathbb{W}$~-- параметры модели, 
-    $$\hat{\mathbf{y}}_j = \mathbf{f} _j(\mathbf{X}_j,\mathbf{w}) \in \mathbb{R}^{2\times r \times m}, \quad \mathbf{X}_j = \bigcup_{i=1}^m \mathbf{x}_i, \quad \mathbf{y}_j = ... $$. 
+    \paragraph{Задачи классификации траекторий по лагранжианам}
 
-    Задача моделирования динамики системы представлена в виде задачи минимизации квадратичной ошибки: 
+        После решения задачи регрессии получаем задачу классификации:
 
-    $$\mathcal{L}(\textbf{w}) = \mathcal{L}( \mathbf{w} | \mathbf{X}_j, \mathbf{y}_j, ) = \| \hat{\mathbf{y}} - \mathbf{y} \|_2^2.$$
-
-
-
-    $$\textbf{w}_j^* = \argmin_{\mathbf{w}\in\mathbb{W} }\left(\mathcal{L}(\textbf{w})\right).$$
-
-\paragraph{Задачи классификации траекторий по лагранжианам}
-
-    После решения задачи регрессии получаем задачу классификации:
-
-    $$\{\textbf{w}^*_j, z_j\}_{j=1}^n,$$
-    где $\textbf{w}^*_j$ ~-- коэффициенты обобщенного лагранжиана $j$-ой траектории, $z_j$ ~-- метка класса этой траектории.
-
-    Для ее решения используются различные методы классификации, среди которых: LogisticRegression, GaussianProcessClassifier, RandomForestClassifier [перевести].
+        $$\{\textbf{w}^*_j, z_j\}_{j=1}^n,$$
+        где $\textbf{w}^*_j$ ~-- коэффициенты обобщенного лагранжиана $j$-ой траектории.
+    
+        Для ее решения используются различные методы классификации, среди которых: логистическая регрессия, гауссовская классификация, случайный лес.
 
 \section{Лагранжевы нейронные сети}
 
-\paragraph{Лагранжева динамика}		
+    \paragraph{Лагранжева динамика}		
 
-Лагранжев формализм \cite{cranmer2020lagrangian, goldstein:mechanics, class_mechanics, arnold_mechanics} моделирует физическую систему с координатами траектории $x_t = (q, \dot{q})$, которая начинается в состоянии $x_0$ и заканчивается в другом состоянии $x_1$. Определяется функционал, называющийся действием:
+        Лагранжев формализм \cite{cranmer2020lagrangian} моделирует физическую систему с координатами траектории $x_t = (q, \dot{q})$, которая начинается в состоянии $x_0$ и заканчивается в состоянии $x_1$. Определяется функционал, называющийся действием:
 
-$$S=\int\limits_{t_{0}}^{t_{1}} L d t,$$
-определяющий путь, по которому координаты $x_t$ пройдут из $x_0$ в $x_1$ в промежуток времени от $t_0$ до $t_1$. Путь минимизирует действие $S$, т.е. $\delta S = 0$. Это приводит к уравнению Эйлера-Лагранжа, определяющему динамику системы
-$$\frac{d}{d t} \frac{\partial L}{\partial \dot{\mathbf{q}}}=\frac{\partial L}{\partial \mathbf{q}}$$
+        $$S=\int\limits_{t_0}^{t_1} L dt,$$
+        показывающий путь, по которому координаты $x_t$ пройдут из $x_0$ в $x_1$ в промежуток времени от $t_0$ до $t_1$. Путь минимизирует действие $S$, что приводит к уравнению Эйлера-Лагранжа, определяющему динамику системы:
 
-Ускорение каждой компоненты системы $ \ddot{\mathbf{q}}$ может быть напрямую получено из данного уравнения:
+        $$\frac{d}{dt} \frac{\partial L}{\partial \dot{\mathbf{q}}} = \frac{\partial L}{\partial \mathbf{q}}$$
 
-$$\begin{aligned} 
-\frac{\partial}{\partial \dot{\mathbf{q}}} \frac{d L}{d t} 
-&=\frac{\partial L}{\partial \mathbf{q}} \\ \frac{\partial}{\partial \dot{\mathbf{q}}}\left(\frac{\partial L}{\partial \mathbf{q}} \frac{d q}{d t}+\frac{\partial L}{\partial \dot{\mathbf{q}}} \frac{d \dot{\mathbf{q}}}{d t}\right) 
-&=\frac{\partial L}{\partial \mathbf{q}} \\ \frac{\partial}{\partial \dot{\mathbf{q}}}\left(\frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}}+\frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}}\right) 
-&=\frac{\partial L}{\partial \mathbf{q}} \\ \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}}+\frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}} 
-&=\frac{\partial L}{\partial \mathbf{q}} \\ \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}} 
-&=\frac{\partial L}{\partial \mathbf{q}}-\frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}} \\ \ddot{\mathbf{q}} 
-&=\left(\frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}}\right)^{-1}\left[\frac{\partial L}{\partial \mathbf{q}}-\frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}}\right] \\ \ddot{\mathbf{q}} 
-&=\left(\nabla_{\dot{\mathbf{q}} \dot{\mathbf{q}}} L\right)^{-1}\left[\nabla_{q} L-\left(\nabla_{\dot{\mathbf{q}}\mathbf{q}} L\right) \dot{\mathbf{q}}\right],
-\end{aligned}$$
+        Ускорение каждой компоненты системы $ \ddot{\mathbf{q}}$ может быть напрямую получено из данного уравнения:
 
-где гессиан $\left(\nabla_{\dot{\mathbf{q}\mathbf{q}}} L\right)_{i j}=\frac{\partial^{2} L}{\partial q_{j} \partial \dot{q}_{i}}$.
+        $$\begin{aligned}
+            \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{dL}{dt} &= \frac{\partial L}{\partial \mathbf{q}}\\
+            \frac{\partial}{\partial \dot{\mathbf{q}}} \left( \frac{\partial L}{\partial \mathbf{q}} \frac{dq}{dt} + \frac{\partial L}{\partial \dot{\mathbf{q}}} \frac{d\dot{\mathbf{q}}}{dt} \right) &= \frac{\partial L}{\partial \mathbf{q}} \\
+            \frac{\partial}{\partial \dot{\mathbf{q}}} \left( \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}} + \frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}} \right) &= \frac{\partial L}{\partial \mathbf{q}} \\ 
+            \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}} + \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}} &= \frac{\partial L}{\partial \mathbf{q}} \\
+            \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}} \ddot{\mathbf{q}} &= \frac{\partial L}{\partial \mathbf{q}} - \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}} \\
+            \ddot{\mathbf{q}} &= \left( \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \dot{\mathbf{q}}} \right)^{-1} \left[ \frac{\partial L}{\partial \mathbf{q}} - \frac{\partial}{\partial \dot{\mathbf{q}}} \frac{\partial L}{\partial \mathbf{q}} \dot{\mathbf{q}} \right] \\
+            \ddot{\mathbf{q}} &= \left( \nabla_{\dot{\mathbf{q}}} \nabla_{\dot{\mathbf{q}}}^T L \right)^{-1} \left[ \nabla_{\mathbf{q}} L - \left( \nabla_{\dot{\mathbf{q}}} \nabla_{\mathbf{q}}^T L \right) \dot{\mathbf{q}} \right].
+        \end{aligned}$$
 
-Таким образом, алгоритм моделирования динамики системы в лагранжевой динамике:
-\begin{enumerate}
-	\item Найти аналитические выражения для кинетической $(T)$ и потенциальной энергии $(V)$
-	\item Получить лагранжиан $\mathcal{L} = T - V $
-	\item Применить ограничение Эйлера-Лагранжа $\frac{d}{d t} \frac{\partial L}{\partial \mathbf{\dot{q}}} =\frac{\partial L}{\partial \mathbf{q}} $
-	\item Решить получившуюся систему дифференциальных уравнений
-\end{enumerate}
+    \paragraph{Лагранжева нейронная сеть}
 
-\paragraph{Лагранжева нейронная сеть}
+        В работе \cite{cranmer2020lagrangian} предложено в нейронную сеть:
 
-В работе \cite{Cranmer2020LagrangianNN} предложено в нейронную сеть $$f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{Y}$$
- добавить априорные знания о физике системы, учитывая лагранжиан системы:
-$$f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{L};$$
+        $$f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{Y}$$
+        добавить априорные знания о физике системы, учитывая лагранжиан системы:
+    
+        $$f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{L}.$$
 
-Т.е. ключевой идеей является параметризовать нейронной сетью лагранжиан $L$, получить выражение ограничения Эйлера-Лагранжа и обратно распространить ошибку через полученные ограничения
-$$\ddot{\mathbf{q}} =\left(\nabla_{\dot{\mathbf{q}} \dot{\mathbf{q}}} L\right)^{-1}\left[\nabla_{q} L-\left(\nabla_{\dot{\mathbf{q}}\mathbf{q}} L\right) \dot{\mathbf{q}}\right],$$ 
+        Ключевой идеей является параметризовать нейронной сетью лагранжиан $L$, получить выражение ограничения Эйлера-Лагранжа и обратно распространить ошибку через полученные ограничения:
+    
+        $$\ddot{\mathbf{q}} = \left( \nabla_{\dot{\mathbf{q}}} \nabla_{\dot{\mathbf{q}}}^T L \right)^{-1} \left[ \nabla_{\mathbf{q}} L - \left( \nabla_{\dot{\mathbf{q}}} \nabla_{\mathbf{q}}^T L \right) \dot{\mathbf{q}} \right].$$
 
-На рисунке \ref{fig: base_vs_lnn} представлены схемы работы базового решения нейронными сетями и LNN для задачи моделирования динамики системы.На основе базового решения основаны работы \cite{NEURIPS2018_69386f6b, 712178}.
+        На рисунке \ref{fig: LNN} представлена схема работы LNN для задачи моделирования динамики системы. В качестве нейронной сети $f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{L}$ берется полносвязная сеть с 3-мя слоями.
 
-\begin{comment}
-\begin{figure}[H]
-	\centering
-	\begin{subfigure}[b]{0.49\textwidth}
-		\centering
-		\includegraphics[width=0.55\textwidth]{baseline_nn_scheme.png}
-		\caption{Базовое решение нейронными сетями}
-		\label{fig:y equals x}
-	\end{subfigure}
-	\hfill
-	\begin{subfigure}[b]{0.49\textwidth}
-		\centering
-		\includegraphics[width=\textwidth]{lnn_scheme.png}
-		\caption{Решение LNN}
-		\label{fig:three sin x}
-	\end{subfigure}
-\caption{Схемы работы базового решения нейронными сетями (a) и LNN (b) для задачи моделирования динамики физической системы}
-\label{fig: base_vs_lnn}
-\end{figure}
- \end{comment}
-
-В качестве нейронной сети $f: \mathbf{X} = (\mathbf{q}, \mathbf{\dot{q}}) \rightarrow \mathbf{L}$ берется полносвязная сеть с 3-мя слоями. Таким образом, для заданных координат  $(\mathbf{q}, \mathbf{\dot{q}})$ имеем модель с априорными знанями о законе сохранения энергии, которой можем получить динамику параметров $(\mathbf{\dot{q}}, \mathbf{\ddot{q}})$.
-
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.5\textwidth]{LNN.eps}
+            \caption{Схемы работы LNN для задачи моделирования динамики физической системы.}
+            \label{fig: LNN}
+        \end{figure}
+    
 \section{Вычислительный эксперимент}
 
-[Цель эксперимента: сравнение качества моделирования механической системы различными нейронными сетями, качество будем сверять с аналитическим решением]
+    Для эксперимента используется датасет PAMAP2 \cite{PAMAP2}.
 
-\paragraph{Данные}
+    \paragraph{Данные}
+    
+        \begin{itemize}
 
-\paragraph{Обработка данных}
+            \item[$\bullet$] Количество акселерометров: 3,
+                    
+                    \begin{itemize}
 
-\section{Результаты}
+                        \item[$\bullet$] На запястье рабочей руки,
+
+                        \item[$\bullet$] На рабочей ноге,
+
+                        \item[$\bullet$] На груди.
+
+                    \end{itemize}
+
+            \item[$\bullet$] Частота акселерометров: 100 Гц,
+            
+            \item[$\bullet$] Количество классов: K = 12, используется 4,
+
+            \item[$\bullet$] Количество испытуемых: 8 мужчин и 1 женщина
+
+        \end{itemize}
+
+    \paragraph{Подготовка данных \cite{processing}}
+
+        В датасете есть несколько проблем:
+        \begin{itemize}
+    
+            \item[$\bullet$] Пропуски данных, связанные с тем, что датчик может пропустить такт. Для восстановления данных использовалась сплайн-интерполяция.
+
+            \item[$\bullet$] Отсутствие необходимых данных: ускорения и координаты. Для их получения использовались методы вычислительной математики.
+
+                \begin{itemize}
+
+                    \item[$\bullet$] Для получения ускорения:
+                         $$f'(x_i) \approx \frac{f(x_{i + 1}) - f(x_{i - 1})}{2h},$$
+
+                    \item[$\bullet$] Для получения координаты:
+                        $$\int\limits_a^b f(x) dx \approx \frac{h}{3} \sum\limits_{k = 1}^{N - 1} \left( f(x_{k + 1} + 4f(x_k) + f(x_{k - 1}) \right).$$
+
+                \end{itemize}
+
+        \end{itemize}
+
+    \paragraph{Эксперимент \cite{experiment, master-tesis}}
+
+        Фиксируется подвыборка из датасета PAMAP2. Для каждого объекта строится обобщенный лагранжиан. С помощью различных классификаторов определяем принадлежность к классу.
+        
+        Понижая размерность данных, строим график распределения данных в 2D на графике \ref{fig: 2D} и 3D на графике \ref{fig: 3D}.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.9\textwidth]{Data_2D.eps}
+            \caption{Распределения данных в 2D}
+            \label{fig: 2D}
+        \end{figure}
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.7\textwidth]{Data_3D.eps}
+            \caption{Распределения данных в 3D}
+            \label{fig: 3D}
+        \end{figure}
+
+        График accuracy от количества главных компонент представлен на графике \ref{fig: accuracy}:
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\textwidth]{Accuracy.eps}
+            \caption{Accuracy от количества главных компонент}
+            \label{fig: accuracy}
+        \end{figure}
+
+        Наилучшее accuracy для различных классификаторов:
+        \begin{itemize}
+
+            \item[$\bullet$] Логистическая регрессия: $79\%$
+
+            \item[$\bullet$] Гауссовская классификация: $85\%$
+
+            \item[$\bullet$] Случайный лес: $83\%$
+
+        \end{itemize}
 
 \section{Заключение}
 
+    \begin{itemize}
+    
+        \item[$\bullet$] Предложен метод решения задачи классификации динамических систем с помощью лагранжевой нейронной сети.
+
+        \item[$\bullet$] Проведен вычислительный эксперимент на датасате PAMAP2, который содержит данные о активности человека.
+        
+        \item[$\bullet$] При использовании данного метода, получается хорошее accuracy = $85\%$.
+        
+    \end{itemize}
+
 \bibliographystyle{plain}
 \bibliography{Bogdanov2023LNN}
-
-\begin{comment}
-    
-\bibitem{Isachenko_en}
-    \emph{Isachenko R.V., Strijov V.V.}
-    Quadratic programming feature selection for multicorrelated signal decoding with partial least squares~//
-    Expert Systems with Applications,
-    Volume 207, 30 November 2022, 117967
-    
-\end{comment}
 
 \end{document}
